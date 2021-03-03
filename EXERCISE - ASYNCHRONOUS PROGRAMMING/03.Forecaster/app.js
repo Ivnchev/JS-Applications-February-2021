@@ -1,8 +1,8 @@
 const submitBtn = document.getElementById('submit')
 const locationInput = document.getElementById('location')
-const forecastElement = document.getElementById('forecast')
 const baseUrl = 'http://localhost:3030/jsonstore/forecaster'
 const current = document.getElementById('current')
+const forecastElement = document.getElementById('forecast')
 const upcomingWether = document.getElementById('upcoming')
 
 const urlRoutes = {
@@ -17,29 +17,21 @@ const symbolMap = {
     'Rain': '&#x2614',
     'Degrees': '&#176'
 }
-
-async function getData(url, code) {
-    return await fetch(url + code)
-    .then(res => res.json())
-    .catch(handleErrors)
-}
+const getData = async(url, code) => await fetch(url + code) .then(res => res.json()) .catch(handleErrors)
 
 submitBtn.addEventListener('click', attachEvents)
 
 async function attachEvents() {
-    if (locationInput.value === '') {
-        return
-    }
+
+    if (locationInput.value === '') { return }
 
     const serverData = await getData(baseUrl, urlRoutes['locations'])
-
-    const foundTown = serverData.find(x => x.name === locationInput.value) || {code: undefined}
+    const foundTown = serverData.find(x => x.name.toLowerCase() === locationInput.value.toLowerCase()) || { code: undefined }
 
     Promise.all([
         await getData(baseUrl, `${urlRoutes['today']}${foundTown.code}`),
         await getData(baseUrl, `${urlRoutes['upcoming']}${foundTown.code}`),
-    ])
-        .then(renderForecast)
+    ]).then(renderForecast)
         .then(appendTo)
         .catch(handleErrors)
 }
@@ -53,26 +45,20 @@ function renderForecast(data) {
                 renderSpan(data.name, { class: 'forecast-data' }),
                 renderSpan(`${data.forecast.low}${symbolMap['Degrees']}/${data.forecast.high}${symbolMap['Degrees']}`, { class: 'forecast-data' }),
                 renderSpan(data.forecast.condition, { class: 'forecast-data' }),
-            )
-        )
+            ))
     }
     function renderThreeDays(data) {
         return renderDiv('', { class: 'forecast-info' },
-        ...data.forecast.map( x => {
-            return renderSpan('', { class: 'upcoming' },
+            ...data.forecast.map(x => renderSpan('', { class: 'upcoming' },
                 renderSpan(symbolMap[x.condition], { class: 'symbol' }),
                 renderSpan(`${x.low}${symbolMap['Degrees']}/${x.high}${symbolMap['Degrees']}`, { class: 'forecast-data' }),
                 renderSpan(x.condition, { class: 'forecast-data' })
-            )
-        })
-        )
+            )))
     }
-
     return {
         today: renderToday(data[0]),
         forecast: renderThreeDays(data[1])
     }
-
 }
 
 function appendTo(data) {
@@ -81,15 +67,11 @@ function appendTo(data) {
     upcomingWether.appendChild(data.forecast)
 }
 
-
 function handleErrors(error) {
-    let errorBlock = document.getElementById('errors')
     clearData()
+    forecastElement.querySelector('div.label').innerHTML = 'Error'
     forecastElement.style.display = 'block'
-    errorBlock.style.display = 'block'
-    errorBlock.innerHTML = 'Wrong city Name! Please try again!'
-    locationInput.value = ''
-    throw new Error(`The data input is wrong! , ${error}`)
+    throw new Error(error)
 }
 
 const renderDiv = renderHtml.bind(undefined, 'div')
@@ -98,20 +80,16 @@ const renderSpan = renderHtml.bind(undefined, 'span')
 function renderHtml(type, content, attributes, ...children) {
     const element = document.createElement(type)
 
-    if (content !== '') {
-        element.innerHTML = content
-    }
+    if (content !== '') { element.innerHTML = content }
+
     Object.entries(attributes).forEach(([k, v]) => element.setAttribute(k, v))
     Array.from(children).map(x => element.appendChild(x))
     return element
 }
-
-
 function clearData() {
-    let errorBlock = document.getElementById('errors')
-    Array.from(current.children).slice(1).map( x => x.remove())
-    Array.from(upcomingWether.children).slice(1).map( x => x.remove())
+    Array.from(upcomingWether.children).slice(1).map(x => x.remove())
+    Array.from(current.children).slice(1).map(x => x.remove())
+    forecastElement.querySelector('div.label').innerHTML = 'Current conditions'
     forecastElement.style.display = 'none'
-    errorBlock.style.display = 'none'
-    errorBlock.innerHTML = ''
+    locationInput.value = ''
 }
